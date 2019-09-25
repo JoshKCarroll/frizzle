@@ -65,6 +65,7 @@ func (f *Friz) monitorProcessingRate(pollPeriod time.Duration) {
 func (f *Friz) LogProcessingRate(pollPeriod time.Duration) {
 	current := atomic.LoadUint64(f.opsCount)
 	currentRate := float64(current-f.lastRateCount) / pollPeriod.Seconds()
+	f.isHealthy = (current > f.lastRateCount)
 	f.log.Info("Processing Rate Update", zap.Float64("rate_per_sec", currentRate), zap.String("module", "monitor"))
 	f.lastRateCount = current
 }

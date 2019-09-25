@@ -16,6 +16,7 @@ type Frizzle interface {
 	Fail(Msg) error
 	Events() <-chan Event
 	AddOptions(...Option)
+	IsHealthy() bool
 	FlushAndClose(timeout time.Duration) error
 	Close() error
 }
@@ -44,6 +45,7 @@ type Friz struct {
 	failDest        string
 	opsCount        *uint64
 	lastRateCount   uint64
+	isHealthy       bool
 	shutdownMonitor chan struct{}
 	tforms          []FrizTransformer
 	outChan         chan Msg
@@ -55,13 +57,14 @@ type Friz struct {
 func Init(source Source, sink Sink, opts ...Option) Frizzle {
 	var ops uint64
 	f := &Friz{
-		source:   source,
-		sink:     sink,
-		log:      zap.NewNop(),
-		stats:    &noopIncrementer{},
-		opsCount: &ops,
-		tforms:   []FrizTransformer{},
-		outChan:  make(chan Msg),
+		source:    source,
+		sink:      sink,
+		log:       zap.NewNop(),
+		stats:     &noopIncrementer{},
+		opsCount:  &ops,
+		isHealthy: true,
+		tforms:    []FrizTransformer{},
+		outChan:   make(chan Msg),
 	}
 
 	// apply all passed in configuration fx
@@ -147,6 +150,13 @@ func (f *Friz) Fail(m Msg) error {
 		}
 	}
 	return nil
+}
+
+// IsHealthy reports on health of the frizzle, as measured by whether messages
+// were processed during the last poll period. If Frizzle is run
+// without MonitorProcessingRate(), IsHealthy() will always return true.
+func (f *Friz) IsHealthy() bool {
+	return f.isHealthy
 }
 
 // FlushAndClose provides default logic for stopping, emptying and shutting down
